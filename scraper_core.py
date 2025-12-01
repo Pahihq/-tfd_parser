@@ -323,10 +323,23 @@ async def scrape_ctfd_challenge(
 
     # ---- сохраняем на диск ----
     base_name = safe_name(title)
+
+    # подпапка категории
+    category_dir_name: Optional[str] = None
+    if category:
+        category_dir_name = safe_name(category, default="Uncategorized")
+
     if out_root:
-        challenge_dir = os.path.join(out_root, base_name)
+        if category_dir_name:
+            challenge_dir = os.path.join(out_root, category_dir_name, base_name)
+        else:
+            challenge_dir = os.path.join(out_root, base_name)
     else:
-        challenge_dir = base_name
+        if category_dir_name:
+            challenge_dir = os.path.join(category_dir_name, base_name)
+        else:
+            challenge_dir = base_name
+
 
     os.makedirs(challenge_dir, exist_ok=True)
 
@@ -372,7 +385,9 @@ async def scrape_ctfd_challenge(
         "title": title,
         "dir": os.path.abspath(challenge_dir),
         "files_count": saved_files_count,
+        "category": category or "",
     }
+
 
 async def discover_challenge_urls_from_list(
     client: httpx.AsyncClient,
@@ -500,17 +515,20 @@ def write_index_md(results: List[Dict[str, Any]], out_root: Optional[str]) -> st
     lines = []
     lines.append("# CTF Dump Index\n")
     lines.append("")
-    lines.append("| # | Title | URL | Local path | Files |")
-    lines.append("|---|-------|-----|-----------|-------|")
+    lines.append("| # | Category | Title | URL | Local path | Files |")
+    lines.append("|---|----------|-------|-----|-----------|-------|")
+
 
     for i, info in enumerate(results_sorted, start=1):
         rel_path = os.path.relpath(info["dir"], root)
         title = info["title"].replace("|", "\\|")
+        category = (info.get("category") or "").replace("|", "\\|")
         url = info["url"]
         files_count = info["files_count"]
         lines.append(
-            f"| {i} | {title} | {url} | `{rel_path}` | {files_count} |"
+            f"| {i} | {category} | {title} | {url} | `{rel_path}` | {files_count} |"
         )
+
 
     content = "\n".join(lines) + "\n"
 
